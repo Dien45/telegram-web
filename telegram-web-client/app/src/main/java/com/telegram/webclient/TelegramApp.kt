@@ -24,6 +24,7 @@ class TelegramApp : Application() {
         const val KEY_BIOMETRIC = "biometric_enabled"
         const val KEY_PIN_HASH = "pin_hash"
         const val KEY_DEBUG = "debug_mode"
+
         const val TELEGRAM_WEB_URL = "https://web.telegram.org"
         const val TELEGRAM_K_URL = "https://k.telegram.org"
 

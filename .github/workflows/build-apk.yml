@@ -2,59 +2,57 @@ name: Build APK
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [main, master]
+    tags: ['v*']
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Setup JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-      
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          cache-gradle: true
-      
+
       - name: Decode Keystore
-        run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > keystore.jks
-          echo "${{ secrets.PACKAGE_REGISTRY_URL }}" > package_registry_url.txt
-      
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > keystore.jks
+
       - name: Build Release APK
-        run: |
-          ./gradlew assembleRelease
+        working-directory: telegram-web-client
+        run: ./gradlew assembleRelease
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-      
+
       - name: Sign APK
+        working-directory: telegram-web-client
         run: |
-          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
+          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA256 \
             app/build/outputs/apk/release/app-release-unsigned.apk \
-            keystore.jks \
+            ../keystore.jks \
             -storepass ${{ secrets.KEYSTORE_PASSWORD }} \
             -keypass ${{ secrets.KEY_PASSWORD }} \
             -tsa https://timestamp.digicert.com
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-      
+
       - name: Align APK
+        working-directory: telegram-web-client
         run: |
-          zipalign -f -v 4 app/build/outputs/apk/release/app-release-unsigned-signed.apk app/build/outputs/apk/release/telegram-web-client.apk
-      
+          $ANDROID_HOME/build-tools/34.0.0/zipalign 4 \
+            app/build/outputs/apk/release/app-release-unsigned-signed.apk \
+            app/build/outputs/apk/release/telegram-web-client.apk
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: app/build/outputs/apk/release/telegram-web-client.apk
+          files: telegram-web-client/app/build/outputs/apk/release/telegram-web-client.apk
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

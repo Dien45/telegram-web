@@ -27,7 +27,6 @@ class LockActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_lock)
         WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = false
-
         vm = ViewModelProvider(this)[AccountViewModel::class.java]
         setupBiometric()
         observeLockout()
@@ -54,6 +53,7 @@ class LockActivity : AppCompatActivity() {
                 }
             }
         })
+
         biometricPrompt?.authenticate(info)
     }
 
@@ -68,6 +68,7 @@ class LockActivity : AppCompatActivity() {
                 lockoutTimer?.cancel()
                 lockoutTimer = object : CountDownTimer(remaining, 1000) {
                     override fun onTick(millisUntilFinished: Long) {}
+
                     override fun onFinish() {
                         failedAttempts = 0
                         setupBiometric()
