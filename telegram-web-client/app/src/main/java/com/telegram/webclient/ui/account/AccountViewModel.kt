@@ -20,6 +20,7 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 class AccountViewModel : ViewModel() {
+
     private val prefs by lazy { getApplication<TelegramApp>().securePrefs() }
 
     private val _locked = mutableLiveDataOf(false)
@@ -71,9 +72,10 @@ class AccountViewModel : ViewModel() {
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
-        val updateWork: PeriodicWorkRequest = PeriodicWorkRequestBuilder<UpdateCheckWorker>(24, TimeUnit.HOURS)
-            .setConstraints(constraints)
-            .build()
+        val updateWork: PeriodicWorkRequest =
+            PeriodicWorkRequestBuilder<UpdateCheckWorker>(24, TimeUnit.HOURS)
+                .setConstraints(constraints)
+                .build()
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
             "updateCheck",
             ExistingPeriodicWorkPolicy.KEEP,

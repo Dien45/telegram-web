@@ -68,7 +68,6 @@ class LockActivity : AppCompatActivity() {
                 lockoutTimer?.cancel()
                 lockoutTimer = object : CountDownTimer(remaining, 1000) {
                     override fun onTick(millisUntilFinished: Long) {}
-
                     override fun onFinish() {
                         failedAttempts = 0
                         setupBiometric()
