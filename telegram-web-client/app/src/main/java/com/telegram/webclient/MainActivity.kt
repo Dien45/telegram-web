@@ -2,11 +2,10 @@ package com.telegram.webclient
 
 import android.content.Intent
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.view.View
 import android.webkit.WebSettings
 import android.webkit.WebView
+import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,8 +16,6 @@ import com.telegram.webclient.ui.account.AccountViewModel
 class MainActivity : AppCompatActivity() {
     private lateinit var vm: AccountViewModel
     private var pinLauncher: ActivityResultLauncher<Intent>? = null
-    private val mainHandler = Handler(Looper.getMainLooper())
-    private var lastInteraction = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,7 +28,6 @@ class MainActivity : AppCompatActivity() {
                 showPinError()
             }
         }
-        lastInteraction = System.currentTimeMillis()
         setupWebView()
         observeSecurity()
     }
@@ -58,7 +54,10 @@ class MainActivity : AppCompatActivity() {
             setGeolocationEnabled(false)
             mediaPlaybackRequiresUserGesture = true
         }
-        wv.webViewClient = SecureWebViewClient()
+        wv.webViewClient = SecureWebViewClient(onLoadingChanged = { loading ->
+            findViewById<ProgressBar>(R.id.progressBar)?.visibility =
+                if (loading) View.VISIBLE else View.GONE
+        })
         wv.webChromeClient = SecureWebChromeClient()
         wv.setDownloadListener { url, userAgent, contentDisposition, mimetype, _ ->
             DownloadManager(this).download(url, userAgent, contentDisposition, mimetype)
@@ -69,16 +68,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun observeSecurity() {
         vm.locked.observe(this) { locked ->
-            if (locked) {
-                showLock()
-            } else {
-                unlockApp()
-            }
+            if (locked) showLock() else unlockApp()
         }
         vm.timeoutExpired.observe(this) { expired ->
-            if (expired) {
-                vm.lock()
-            }
+            if (expired) vm.lock()
         }
     }
 
@@ -88,8 +81,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun unlockApp() {
-        val wv = findViewById<WebView>(R.id.webView)
-        wv.visibility = View.VISIBLE
+        findViewById<WebView>(R.id.webView).visibility = View.VISIBLE
     }
 
     private fun showPinError() {
@@ -102,9 +94,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun clearWebView() {
-        val wv = findViewById<WebView>(R.id.webView)
-        wv?.apply {
-            clearCache(true)
+        findViewById<WebView>(R.id.webView)?.apply {
             clearHistory()
             destroy()
         }
