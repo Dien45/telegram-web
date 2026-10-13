@@ -1,7 +1,5 @@
 package com.telegram.webclient
 
-import android.graphics.Bitmap
-import android.widget.Toast
 import android.webkit.JsPromptResult
 import android.webkit.JsResult
 import android.webkit.WebChromeClient

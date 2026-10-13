@@ -1,11 +1,9 @@
 package com.telegram.webclient
 
 import android.graphics.Bitmap
-import android.net.http.WebViewClientError
-import android.os.Build
-import android.view.inputmethod.InputConnection
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
@@ -23,12 +21,11 @@ class SecureWebViewClient : WebViewClient() {
     }
 
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-        val url = request.url
-        val host = url.host
-        if (ALLOWED_HOSTS.any { host.endsWith(it) }) {
+        val host = request.url.host ?: return true
+        if (ALLOWED_HOSTS.any { host == it || host.endsWith(".$it") }) {
             return false
         }
-        Toast.makeText(view.context, "Blocked: ${url.host}", Toast.LENGTH_LONG).show()
+        Toast.makeText(view.context, "Blocked: $host", Toast.LENGTH_LONG).show()
         return true
     }
 
@@ -38,7 +35,9 @@ class SecureWebViewClient : WebViewClient() {
         }
     }
 
-    override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest) = null
+    override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
+        return null
+    }
 
     override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
         super.onPageStarted(view, url, favicon)
@@ -47,9 +46,9 @@ class SecureWebViewClient : WebViewClient() {
     override fun onReceivedHttpError(
         view: WebView,
         request: WebResourceRequest,
-        response: android.net.HttpURLConnection
+        errorResponse: WebResourceResponse
     ) {
-        if (request.isForMainFrame && response.statusCode in 400..499) {
+        if (request.isForMainFrame && errorResponse.statusCode in 400..499) {
             view.loadUrl("about:blank")
         }
     }

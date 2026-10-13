@@ -4,16 +4,13 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
 import androidx.biometric.BiometricPrompt
-import androidx.biometric.BiometricPromptInfo
-import androidx.core.content.edit
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.ViewModelProvider
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.snackbar.Snackbar
+import com.telegram.webclient.ui.account.AccountViewModel
 import java.util.concurrent.Executor
-import java.util.concurrent.Executors
 
 class LockActivity : AppCompatActivity() {
 
@@ -21,22 +18,23 @@ class LockActivity : AppCompatActivity() {
     private var failedAttempts = 0
     private var lockoutTimer: CountDownTimer? = null
     private var biometricPrompt: BiometricPrompt? = null
-    private val executor: Executor = Executors.newSingleThreadExecutor()
+    private lateinit var executor: Executor
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_lock)
         WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = false
+        executor = ContextCompat.getMainExecutor(this)
         vm = ViewModelProvider(this)[AccountViewModel::class.java]
         setupBiometric()
         observeLockout()
     }
 
     private fun setupBiometric() {
-        val info = BiometricPromptInfo.Builder()
-            .setTitle("Buka Telegram Web Client")
-            .setSubtitle("Gunakan biometrik atau PIN")
-            .setNegativeButtonText("Gunakan PIN")
+        val info = BiometricPrompt.PromptInfo.Builder()
+            .setTitle(getString(R.string.biometric_title))
+            .setSubtitle(getString(R.string.biometric_subtitle))
+            .setNegativeButtonText(getString(R.string.biometric_use_pin))
             .setConfirmationRequired(false)
             .build()
 
@@ -81,5 +79,10 @@ class LockActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         lockoutTimer?.cancel()
+    }
+
+    companion object {
+        fun createIntent(source: android.content.Context): Intent =
+            Intent(source, LockActivity::class.java)
     }
 }

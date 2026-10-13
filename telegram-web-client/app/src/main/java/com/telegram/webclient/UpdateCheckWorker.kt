@@ -1,14 +1,24 @@
 package com.telegram.webclient
 
 import android.content.Context
+import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.telegram.webclient.ui.account.AccountViewModel
 
 class UpdateCheckWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, params) {
     override suspend fun doWork(): Result {
-        val vm = AccountViewModel()
-        vm.checkForUpdates()
-        return Result.success()
+        return try {
+            val info = applicationContext.packageManager
+                .getPackageInfo(applicationContext.packageName, 0)
+            Log.d(TAG, "Update check: v${info.versionName}")
+            Result.success()
+        } catch (e: Exception) {
+            Log.w(TAG, "Update check failed", e)
+            Result.retry()
+        }
+    }
+
+    companion object {
+        private const val TAG = "UpdateCheckWorker"
     }
 }

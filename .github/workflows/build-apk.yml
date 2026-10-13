@@ -38,29 +38,12 @@ jobs:
         working-directory: telegram-web-client
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease
+          ./gradlew assembleRelease --stacktrace
         env:
           KEYSTORE_PASSWORD: android
           KEY_PASSWORD: android
-      - name: Align APK
-        working-directory: telegram-web-client
-        run: |
-          ${ANDROID_SDK_ROOT}/build-tools/34.0.0/zipalign -f 4 \
-            app/build/outputs/apk/release/app-release-unsigned.apk \
-            app-release-unsigned-aligned.apk
-      - name: Sign APK
-        working-directory: telegram-web-client
-        run: |
-          ${ANDROID_SDK_ROOT}/build-tools/34.0.0/apksigner sign \
-            --ks keystore.jks \
-            --ks-pass pass:android \
-            --key-pass pass:android \
-            --ks-key-alias webclient \
-            --out app-release-signed.apk \
-            app-release-unsigned-aligned.apk
-          ${ANDROID_SDK_ROOT}/build-tools/34.0.0/apksigner verify --print-certs app-release-signed.apk
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: telegram-web-apk
-          path: telegram-web-client/app-release-signed.apk
+          path: telegram-web-client/app/build/outputs/apk/release/*.apk

@@ -1,35 +1,33 @@
 package com.telegram.webclient.ui.account
 
+import android.app.Application
 import android.content.Context
-import android.content.Intent
-import android.content.pm.PackageInfo
-import android.content.pm.Signature
 import android.os.SystemClock
-import android.util.Base64
 import android.util.Log
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequest
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import java.io.IOException
+import com.telegram.webclient.TelegramApp
+import com.telegram.webclient.UpdateCheckWorker
 import java.util.concurrent.TimeUnit
 
-class AccountViewModel : ViewModel() {
+class AccountViewModel(app: Application) : AndroidViewModel(app) {
 
-    private val prefs by lazy { getApplication<TelegramApp>().securePrefs() }
+    private val prefs by lazy { TelegramApp.securePrefs() }
 
-    private val _locked = mutableLiveDataOf(false)
+    private val _locked = MutableLiveData(false)
     val locked: LiveData<Boolean> = _locked
 
-    private val _timeoutExpired = mutableLiveDataOf(false)
+    private val _timeoutExpired = MutableLiveData(false)
     val timeoutExpired: LiveData<Boolean> = _timeoutExpired
 
-    private val _lockoutRemaining = mutableLiveDataOf(0L)
+    private val _lockoutRemaining = MutableLiveData(0L)
     val lockoutRemaining: LiveData<Long> = _lockoutRemaining
 
     private var failed = 0
@@ -68,18 +66,32 @@ class AccountViewModel : ViewModel() {
         _timeoutExpired.value = false
     }
 
-    private fun scheduleUpdateCheck(context: Context) {
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
-        val updateWork: PeriodicWorkRequest =
-            PeriodicWorkRequestBuilder<UpdateCheckWorker>(24, TimeUnit.HOURS)
-                .setConstraints(constraints)
+    fun checkForUpdates() {
+        try {
+            val ctx = getApplication<Application>().applicationContext
+            val info = ctx.packageManager.getPackageInfo(ctx.packageName, 0)
+            Log.d(TAG, "Update check: v${info.versionName} (${info.versionCode})")
+        } catch (e: Exception) {
+            Log.w(TAG, "Update check failed", e)
+        }
+    }
+
+    companion object {
+        private const val TAG = "AccountViewModel"
+
+        fun scheduleUpdateCheck(context: Context) {
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build()
-        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-            "updateCheck",
-            ExistingPeriodicWorkPolicy.KEEP,
-            updateWork
-        )
+            val updateWork: PeriodicWorkRequest =
+                PeriodicWorkRequestBuilder<UpdateCheckWorker>(24, TimeUnit.HOURS)
+                    .setConstraints(constraints)
+                    .build()
+            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+                "updateCheck",
+                ExistingPeriodicWorkPolicy.KEEP,
+                updateWork
+            )
+        }
     }
 }

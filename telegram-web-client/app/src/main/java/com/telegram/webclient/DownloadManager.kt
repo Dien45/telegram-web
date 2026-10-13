@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Environment
 import android.widget.Toast
+import androidx.core.content.FileProvider
 import java.io.File
 import java.net.URLDecoder
 
@@ -23,7 +24,7 @@ class DownloadManager(private val context: Context) {
                     input.copyTo(output)
                 }
             }
-            val uri = androidx.core.content.FileProvider.getUriForFile(
+            val uri = FileProvider.getUriForFile(
                 context, "${context.packageName}.provider", dest
             )
             val i = Intent(Intent.ACTION_VIEW).apply {
@@ -43,6 +44,6 @@ class DownloadManager(private val context: Context) {
             if (match != null) return URLDecoder.decode(match.groupValues[1], "UTF-8")
         }
         val last = url.substringAfterLast('/')
-        return if (last.isBlank()) "download_${System.currentTimeMillis()}" else last.substringAfter('?')
+        return if (last.isBlank()) "download_${System.currentTimeMillis()}" else last.substringBefore('?').ifBlank { "download_${System.currentTimeMillis()}" }
     }
 }
