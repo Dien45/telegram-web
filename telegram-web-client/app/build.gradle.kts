@@ -5,29 +5,29 @@ plugins {
 }
 
 android {
-    namespace "com.telegram.webclient"
-    compileSdk 34
+    namespace = "com.telegram.webclient"
+    compileSdk = 34
 
     defaultConfig {
-        applicationId "com.telegram.webclient"
-        minSdk 26
-        targetSdk 34
-        versionCode 1
-        versionName "1.0.0"
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        applicationId = "com.telegram.webclient"
+        minSdk = 26
+        targetSdk = 34
+        versionCode = 1
+        versionName = "1.0.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
-            isMinifyEnabled true
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig signingConfigs.getByName("release")
+            signingConfig = signingConfigs.getByName("release")
         }
         debug {
-            applicationIdSuffix ".debug"
+            applicationIdSuffix = ".debug"
         }
     }
 
@@ -48,6 +48,7 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
     kotlinOptions {
         jvmTarget = "17"
     }
@@ -73,6 +74,7 @@ dependencies {
     implementation("androidx.room:room-ktx:2.6.1")
     implementation("com.github.AkashJain5794:PinView:1.0.1")
     implementation("com.github.Yatatsu:pref-helper:1.0.0")
+
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.11.1")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
