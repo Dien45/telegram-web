@@ -14,7 +14,9 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0.0"
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
         buildConfigField("String", "EXPECTED_SIG_HASH", "\"\"")
     }
 
@@ -69,6 +71,9 @@ dependencies {
     kapt("androidx.room:room-compiler:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
     implementation("com.google.code.gson:gson:2.10.1")
+
+    // Badge launcher jumlah chat belum terbaca (ala Telegram native)
+    implementation("me.leolin:ShortcutBadger:1.1.22")
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")

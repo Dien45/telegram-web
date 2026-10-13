@@ -6,6 +6,7 @@ import android.util.Base64
 import android.webkit.JavascriptInterface
 
 class SecureJsBridge(private val context: Context) {
+
     @JavascriptInterface
     fun ping(): String = "pong"
 
@@ -18,6 +19,15 @@ class SecureJsBridge(private val context: Context) {
     @JavascriptInterface
     fun getBuildInfo(): String {
         return "{\"version\":\"${BuildConfig.VERSION_NAME}\",\"api\":${Build.VERSION.SDK_INT}}"
+    }
+
+    /**
+     * Dipanggil dari JS (web.telegram.org) setiap kali jumlah chat belum
+     * terbaca berubah. Nilai [count] = 0 berarti badge dibersihkan.
+     */
+    @JavascriptInterface
+    fun onUnreadCount(count: Int) {
+        UnreadBadgeManager.update(context, count)
     }
 
     @JavascriptInterface
@@ -38,7 +48,8 @@ class SecureJsBridge(private val context: Context) {
             } else {
                 @Suppress("DEPRECATION")
                 info.signatures
-            } ?: return false
+            }
+            if (sigs.isNullOrEmpty()) return false
             val md = java.security.MessageDigest.getInstance("SHA-256")
             val hash = Base64.encodeToString(md.digest(sigs[0].toByteArray()), Base64.NO_WRAP)
             hash == expected

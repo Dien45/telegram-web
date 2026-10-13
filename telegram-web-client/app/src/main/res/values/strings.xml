@@ -29,4 +29,13 @@
     <string name="accessibility">Aksesibilitas</string>
     <string name="talkback">TalkBack</string>
     <string name="large_text">Teks besar</string>
+
+    <!-- Badge jumlah chat belum terbaca (ala Telegram native) -->
+    <string name="badge_channel_name">Pesan belum terbaca</string>
+    <string name="badge_channel_desc">Menampilkan jumlah chat belum terbaca di ikon aplikasi</string>
+    <string name="badge_open_hint">Ketuk untuk membuka Telegram</string>
+    <plurals name="unread_messages">
+        <item quantity="one">%d pesan belum dibaca</item>
+        <item quantity="other">%d pesan belum dibaca</item>
+    </plurals>
 </resources>

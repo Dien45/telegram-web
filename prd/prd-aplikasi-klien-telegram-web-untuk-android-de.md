@@ -54,6 +54,7 @@ Prioritas: **P0** wajib untuk rilis pertama, **P1** penting, **P2** nice-to-have
 | FR-17 | Dukungan tema gelap/terang mengikuti sistem dan tampilan edge-to-edge. | P2 | UI menyesuaikan tema sistem tanpa glitch. |
 | FR-18 | Penanganan tautan eksternal: buka di browser kustom internal atau browser default, bukan di WebView utama. | P2 | Tautan luar tidak merusak sesi Telegram Web. |
 | FR-19 | Telemetri opt-in (self-hosted) untuk crash & penggunaan anonim, default **mati**. | P2 | Tidak ada data terkirim bila pengguna tidak menyetujui. |
+| FR-20 | **Badge chat belum terbaca**: tampilkan jumlah chat belum dibaca sebagai badge native di ikon aplikasi (ala Telegram), disinkronkan dari document.title Telegram Web via JS bridge. | P1 | Badge muncul/hilang sesuai jumlah unread; nol membersihkan badge. |
 
 ## Non-Functional Requirements
 **Performa**: cold start < 2,5 detik perangkat mid-range; pemakaian RAM idle < 150 MB; ukuran APK < 15 MB. Enkripsi/dekripsi tidak boleh menambah latensi signifikan pada operasi UI (< 100 ms per operasi umum).
@@ -90,7 +91,7 @@ Prioritas: **P0** wajib untuk rilis pertama, **P1** penting, **P2** nice-to-have
 |---|---|---|
 | **M0 — Riset & PoC** | Validasi WebView + Telegram Web, cek login/QR, uji isolasi cookie, uji enkripsi lokal & profil WebView multi-akun | 2–3 minggu |
 | **M1 — MVP (P0)** | FR-1 s/d FR-10: WebView terhardening, login, kunci biometrik/PIN, auto-lock, isolasi sesi, enkripsi lokal, multi-akun + isolasi, wipe eksplisit, screenshot normal | 6–8 minggu |
-| **M2 — Keamanan & Distribusi (P1)** | FR-11 s/d FR-16: dukungan proxy, kontrol jaringan, update checker GitHub, verifikasi hash, layar pengaturan, peringatan root | 4–5 minggu |
+| **M2 — Keamanan & Distribusi (P1)** | FR-11 s/d FR-20: dukungan proxy, kontrol jaringan, update checker GitHub, verifikasi hash, layar pengaturan, peringatan root | 4–5 minggu |
 | **M3 — Polish (P2)** | FR-17 s/d FR-19: tema, penanganan tautan, telemetri opt-in, aksesibilitas | 3 minggu |
 | **M4 — Rilis Publik & Iterasi** | Rilis GitHub Releases v1.0, dokumentasi build, CI reproducible, pemantauan kompatibilitas Telegram Web | Berkelanjutan |
 

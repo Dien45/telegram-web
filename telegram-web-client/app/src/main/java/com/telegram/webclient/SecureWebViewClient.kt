@@ -9,7 +9,8 @@ import android.webkit.WebViewClient
 import android.widget.Toast
 
 class SecureWebViewClient(
-    private val onLoadingChanged: ((Boolean) -> Unit)? = null
+    private val onLoadingChanged: ((Boolean) -> Unit)? = null,
+    private val onPageFinished: ((WebView) -> Unit)? = null
 ) : WebViewClient() {
 
     companion object {
@@ -21,7 +22,7 @@ class SecureWebViewClient(
 
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
         val host = request.url.host
-        // URL tanpa host (about:, blob:, data:, javascript:) biarkan berjalan di dalam WebView.
+        // URL tanpa host (about:, blob:, data:, javascript:) biarkan berjalan dalam WebView.
         if (host == null) return false
         val allowed = ALLOWED_HOSTS.any { host == it || host.endsWith(".$it") }
         if (allowed) return false
@@ -61,5 +62,6 @@ class SecureWebViewClient(
     override fun onPageFinished(view: WebView, url: String?) {
         super.onPageFinished(view, url)
         onLoadingChanged?.invoke(false)
+        onPageFinished?.invoke(view)
     }
 }
