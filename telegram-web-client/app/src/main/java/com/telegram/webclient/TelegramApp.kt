@@ -4,7 +4,7 @@ import android.app.Application
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKeys
+import androidx.security.crypto.MasterKey
 import java.security.SecureRandom
 import java.util.Base64
 import javax.crypto.Cipher
@@ -37,11 +37,13 @@ class TelegramApp : Application() {
 
         fun securePrefs(): SharedPreferences {
             val ctx = instance!!.applicationContext
-            val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
+            val masterKey = MasterKey.Builder(ctx)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
             return EncryptedSharedPreferences.create(
                 ctx,
                 PREFS_NAME,
-                masterKeyAlias,
+                masterKey,
                 EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             )

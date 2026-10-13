@@ -54,7 +54,7 @@ class MainActivity : AppCompatActivity() {
             builtInZoomControls = false
             displayZoomControls = false
             javaScriptCanOpenWindowsAutomatically = false
-            supportMultipleWindows = false
+            setSupportMultipleWindows(false)
             setGeolocationEnabled(false)
             mediaPlaybackRequiresUserGesture = true
         }

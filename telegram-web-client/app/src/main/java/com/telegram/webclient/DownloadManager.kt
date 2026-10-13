@@ -7,7 +7,9 @@ import android.os.Environment
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import java.io.File
+import java.net.URL
 import java.net.URLDecoder
+import javax.net.ssl.HttpsURLConnection
 
 class DownloadManager(private val context: Context) {
     fun download(url: String, userAgent: String, contentDisposition: String, mimetype: String) {
@@ -15,7 +17,7 @@ class DownloadManager(private val context: Context) {
         val dir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
         val dest = File(dir, fileName)
         try {
-            val conn = java.net.URL(url).openConnection() as java.net.HttpsURLConnection
+            val conn = URL(url).openConnection() as HttpsURLConnection
             conn.setRequestProperty("User-Agent", userAgent)
             conn.connectTimeout = 30_000
             conn.readTimeout = 60_000

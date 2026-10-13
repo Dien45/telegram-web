@@ -6,16 +6,19 @@ import android.webkit.WebChromeClient
 import android.webkit.WebView
 
 class SecureWebChromeClient : WebChromeClient() {
-    override fun onJsAlert(view: WebView, url: String, message: String, result: JsResult) {
+    override fun onJsAlert(view: WebView, url: String, message: String, result: JsResult): Boolean {
         result.confirm()
+        return true
     }
 
-    override fun onJsConfirm(view: WebView, url: String, message: String, result: JsResult) {
+    override fun onJsConfirm(view: WebView, url: String, message: String, result: JsResult): Boolean {
         result.confirm()
+        return true
     }
 
-    override fun onJsPrompt(view: WebView, url: String, message: String, defaultValue: String, result: JsPromptResult) {
+    override fun onJsPrompt(view: WebView, url: String, message: String, defaultValue: String, result: JsPromptResult): Boolean {
         result.confirm(defaultValue)
+        return true
     }
 
     override fun onShowCustomView(view: android.view.View?, callback: CustomViewCallback?) {
