@@ -105,7 +105,6 @@ object UnreadBadgeManager {
             .setNumber(count)
             .setOnlyAlertOnce(true)
             .setSilent(true)
-            .setShowBadge(true)
             .setContentIntent(pending)
             .build()
 
