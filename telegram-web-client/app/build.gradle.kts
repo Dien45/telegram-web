@@ -3,38 +3,47 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("kotlin-parcelize")
 }
+
 android {
-    namespace = "com.telegram.webclient"
-    compileSdk = 34
+    namespace "com.telegram.webclient"
+    compileSdk 34
+
     defaultConfig {
-        applicationId = "com.telegram.webclient"
-        minSdk = 26
-        targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        applicationId "com.telegram.webclient"
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
+
     buildTypes {
         release {
-            isMinifyEnabled = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+            signingConfig signingConfigs.getByName("release")
         }
         debug {
-            applicationIdSuffix = ".debug"
+            applicationIdSuffix ".debug"
         }
     }
+
     signingConfigs {
         create("release") {
             storeFile = file("../keystore.jks")
-            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
+            storePassword = System.getenv("KEYSTORE_PASSWORD")
             keyAlias = "webclient"
-            keyPassword = System.getenv("KEY_PASSWORD") ?: ""
+            keyPassword = System.getenv("KEY_PASSWORD")
         }
     }
+
     buildFeatures {
         viewBinding = true
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -43,6 +52,7 @@ android {
         jvmTarget = "17"
     }
 }
+
 dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
