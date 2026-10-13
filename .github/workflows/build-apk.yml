@@ -3,7 +3,7 @@ name: Build APK
 on:
   push:
     branches: [main, master]
-  tags: ['v*']
+    tags: ['v*']
   workflow_dispatch:
 
 jobs:
@@ -27,7 +27,7 @@ jobs:
           cmd-tools-version: 8038392
 
       - name: License Android SDK
-        run: yes sdkmanager --licenses
+        run: printf 'y\n' | sdkmanager --licenses
 
       - name: Install SDK packages
         run: sdkmanager "platform-tools" "platforms;34" "build-tools;34.0.0"
@@ -38,16 +38,15 @@ jobs:
           cache-gradle: true
 
       - name: Generate Keystore
-        run: |
-          keytool -genkey \
-            -keystore keystore.jks \
-            -alias webclient \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -storepass android \
-            -keypass android \
-            -dname "CN=TelegramWebClient, OU=Dev, O=Telegram, L=Jakarta, ST=DKI Jakarta, C=ID"
+        run: keytool -genkey \
+          -keystore keystore.jks \
+          -alias webclient \
+          -keyalg RSA \
+          -keysize 2048 \
+          -validity 10000 \
+          -storepass android \
+          -keypass android \
+          -dname "CN=TelegramWebClient, OU=Dev, O=Telegram, L=Jakarta, ST=DKI Jakarta, C=ID"
 
       - name: Build Release APK
         working-directory: telegram-web-client
@@ -58,22 +57,20 @@ jobs:
 
       - name: Align APK
         working-directory: telegram-web-client
-        run: |
-          $ANDROID_HOME/build-tools/34.0.0/zipalign 4 \
-            app/build/outputs/apk/release/app-release-unsigned.apk \
-            app-release-aligned.apk
+        run: $ANDROID_HOME/build-tools/34.0.0/zipalign 4 \
+          app/build/outputs/apk/release/app-release-unsigned.apk \
+          app-release-aligned.apk
 
       - name: Sign APK
         working-directory: telegram-web-client
-        run: |
-          jarsigner -verbose \
-            -sigalg SHA256withRSA \
-            -digestalg SHA256 \
-            app-release-aligned.apk \
-            ../keystore.jks \
-            -storepass android \
-            -keypass android \
-            -tsa https://timestamp.digicert.com
+        run: jarsigner -verbose \
+          -sigalg SHA256withRSA \
+          -digestalg SHA256 \
+          app-release-aligned.apk \
+          ../keystore.jks \
+          -storepass android \
+          -keypass android \
+          -tsa https://timestamp.digicert.com
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
