@@ -27,7 +27,7 @@ jobs:
 
       - name: License Android SDK packages
         run: |
-          sdkmanager --licenses
+          yes | sdkmanager --licenses
           sdkmanager "platform-tools" "platforms;34" "build-tools;34.0.0"
 
       - name: Setup Gradle
@@ -58,7 +58,7 @@ jobs:
       - name: Align APK
         working-directory: telegram-web-client
         run: |
-          $ANDROID_HOME/build-tools/34.0.0/zipalign 4 \
+          $ANDROID_HOME/build-tools/34.0.0/zipalign -f 4 \
             app/build/outputs/apk/release/app-release-unsigned.apk \
             app-release-aligned.apk
 
