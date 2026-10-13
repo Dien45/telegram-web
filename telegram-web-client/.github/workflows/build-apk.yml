@@ -2,13 +2,12 @@ name: Build APK
 
 on:
   push:
-    tags: 'v*'
+    tags: ['v*']
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,7 +24,6 @@ jobs:
           api-level: 34
           target: android-34
           cmd-tools-version: 8038392
-          nda: false
 
       - name: License Android SDK packages
         run: |
@@ -40,13 +38,19 @@ jobs:
       - name: Generate Keystore
         working-directory: telegram-web-client
         run: |
-          keytool -genkey -v -keystore keystore.jks -alias webclient -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=TelegramWebClient, OU=Dev, O=Telegram, L=Jakarta, ST=DKI Jakarta, C=ID"
+          keytool -genkey \
+            -keystore keystore.jks \
+            -alias webclient \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass android \
+            -keypass android \
+            -dname "CN=TelegramWebClient, OU=Dev, O=Telegram, L=Jakarta, ST=DKI Jakarta, C=ID"
 
       - name: Build Release APK
         working-directory: telegram-web-client
-        run: |
-          chmod +x ./gradlew
-          ./gradlew assembleRelease
+        run: ./gradlew assembleRelease
         env:
           KEYSTORE_PASSWORD: android
           KEY_PASSWORD: android
@@ -54,12 +58,19 @@ jobs:
       - name: Align APK
         working-directory: telegram-web-client
         run: |
-          $ANDROID_HOME/build-tools/34.0.0/zipalign -f 4 app/build/outputs/apk/release/app-release-unsigned.apk app-release-aligned.apk
+          $ANDROID_HOME/build-tools/34.0.0/zipalign 4 \
+            app/build/outputs/apk/release/app-release-unsigned.apk \
+            app-release-aligned.apk
 
       - name: Sign APK
         working-directory: telegram-web-client
         run: |
-          $ANDROID_HOME/build-tools/34.0.0/apksigner sign --ks keystore.jks --ks-pass pass:android --ks-key-alias webclient --key-pass pass:android app-release-aligned.apk
+          $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
+            --ks keystore.jks \
+            --ks-pass pass:android \
+            --ks-key-alias webclient \
+            --key-pass pass:android \
+            app-release-aligned.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
