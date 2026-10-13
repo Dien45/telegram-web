@@ -38,7 +38,9 @@ jobs:
             -dname "CN=TelegramWebClient, OU=Dev, O=Telegram, L=Jakarta, ST=DKI Jakarta, C=ID"
       - name: Build Release APK
         working-directory: telegram-web-client
-        run: ./gradlew assembleRelease
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease
         env:
           KEYSTORE_PASSWORD: android
           KEY_PASSWORD: android
@@ -56,7 +58,7 @@ jobs:
             -sigalg SHA256withRSA \
             -digestalg SHA256 \
             app-release-aligned.apk \
-            ../keystore.jks \
+            keystore.jks \
             -storepass android \
             -keypass android \
             -tsa https://timestamp.digicert.com

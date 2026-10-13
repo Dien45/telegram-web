@@ -52,7 +52,6 @@ telegram-web-client/
 ├── build.gradle.kts
 ├── settings.gradle.kts
 ├── gradlew
-├── .github/workflows/build-apk.yml
 └── README.md
 ```
 
