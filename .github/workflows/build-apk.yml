@@ -20,17 +20,11 @@ jobs:
           distribution: 'temurin'
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
         with:
-          api-level: 34
-          target: android-34
-          cmd-tools-version: 8038392
-
-      - name: License Android SDK
-        run: printf 'y\n' | sdkmanager --licenses
-
-      - name: Install SDK packages
-        run: sdkmanager "platform-tools" "platforms;34" "build-tools;34.0.0"
+          cmdline-tools-version: 15859902
+          packages: 'platform-tools,platforms;34,build-tools;34.0.0'
+          accept-license: true
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
