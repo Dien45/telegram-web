@@ -19,11 +19,9 @@ jobs:
         uses: android-actions/setup-android@v4
         with:
           accept-android-sdk-licenses: true
-          packages: 'platform-tools;platforms;android-34;build-tools;34.0.0'
+          packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
-        with:
-          cache-gradle: true
       - name: Generate Keystore
         working-directory: telegram-web-client
         run: |
@@ -47,23 +45,22 @@ jobs:
       - name: Align APK
         working-directory: telegram-web-client
         run: |
-          ANDROID_HOME=$ANDROID_SDK_ROOT
-          $ANDROID_HOME/build-tools/34.0.0/zipalign 4 \
+          ${ANDROID_SDK_ROOT}/build-tools/34.0.0/zipalign -f 4 \
             app/build/outputs/apk/release/app-release-unsigned.apk \
-            app-release-aligned.apk
+            app-release-unsigned-aligned.apk
       - name: Sign APK
         working-directory: telegram-web-client
         run: |
-          jarsigner -verbose \
-            -sigalg SHA256withRSA \
-            -digestalg SHA256 \
-            app-release-aligned.apk \
-            keystore.jks \
-            -storepass android \
-            -keypass android \
-            -tsa https://timestamp.digicert.com
+          ${ANDROID_SDK_ROOT}/build-tools/34.0.0/apksigner sign \
+            --ks keystore.jks \
+            --ks-pass pass:android \
+            --key-pass pass:android \
+            --ks-key-alias webclient \
+            --out app-release-signed.apk \
+            app-release-unsigned-aligned.apk
+          ${ANDROID_SDK_ROOT}/build-tools/34.0.0/apksigner verify --print-certs app-release-signed.apk
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: telegram-web-apk
-          path: telegram-web-client/app-release-aligned.apk
+          path: telegram-web-client/app-release-signed.apk
