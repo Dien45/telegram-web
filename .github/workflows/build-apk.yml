@@ -1,35 +1,29 @@
 name: Build APK
-
 on:
   push:
     branches: [main, master]
     tags: ['v*']
   workflow_dispatch:
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
         with:
           accept-android-sdk-licenses: true
-          packages: 'platform-tools platforms;34 build-tools;34.0.0'
-
+          packages: 'platform-tools;platforms;android-34;build-tools;34.0.0'
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
           cache-gradle: true
-
       - name: Generate Keystore
         working-directory: telegram-web-client
         run: |
@@ -42,21 +36,19 @@ jobs:
             -storepass android \
             -keypass android \
             -dname "CN=TelegramWebClient, OU=Dev, O=Telegram, L=Jakarta, ST=DKI Jakarta, C=ID"
-
       - name: Build Release APK
         working-directory: telegram-web-client
-        run: ./gradle assembleRelease
+        run: ./gradlew assembleRelease
         env:
           KEYSTORE_PASSWORD: android
           KEY_PASSWORD: android
-
       - name: Align APK
         working-directory: telegram-web-client
         run: |
+          ANDROID_HOME=$ANDROID_SDK_ROOT
           $ANDROID_HOME/build-tools/34.0.0/zipalign 4 \
             app/build/outputs/apk/release/app-release-unsigned.apk \
             app-release-aligned.apk
-
       - name: Sign APK
         working-directory: telegram-web-client
         run: |
@@ -68,7 +60,6 @@ jobs:
             -storepass android \
             -keypass android \
             -tsa https://timestamp.digicert.com
-
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
