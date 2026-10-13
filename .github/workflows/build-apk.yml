@@ -20,7 +20,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
         with:
           accept-android-sdk-licenses: true
           packages: 'platform-tools,platforms;34,build-tools;34.0.0'
@@ -31,6 +31,7 @@ jobs:
           cache-gradle: true
 
       - name: Generate Keystore
+        working-directory: telegram-web-client
         run: |
           keytool -genkey \
             -keystore keystore.jks \
@@ -44,7 +45,7 @@ jobs:
 
       - name: Build Release APK
         working-directory: telegram-web-client
-        run: ./gradlew assembleRelease
+        run: ./gradle assembleRelease
         env:
           KEYSTORE_PASSWORD: android
           KEY_PASSWORD: android

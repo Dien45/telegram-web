@@ -19,16 +19,12 @@ jobs:
           distribution: 'temurin'
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
         with:
+          accept-android-sdk-licenses: true
           api-level: 34
           target: android-34
           cmd-tools-version: 8038392
-
-      - name: License Android SDK packages
-        run: |
-          yes | sdkmanager --licenses
-          sdkmanager "platform-tools" "platforms;34" "build-tools;34.0.0"
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
@@ -50,7 +46,7 @@ jobs:
 
       - name: Build Release APK
         working-directory: telegram-web-client
-        run: ./gradlew assembleRelease
+        run: ./gradle assembleRelease
         env:
           KEYSTORE_PASSWORD: android
           KEY_PASSWORD: android
@@ -58,7 +54,7 @@ jobs:
       - name: Align APK
         working-directory: telegram-web-client
         run: |
-          $ANDROID_HOME/build-tools/34.0.0/zipalign -f 4 \
+          $ANDROID_HOME/build-tools/34.0.0/zipalign 4 \
             app/build/outputs/apk/release/app-release-unsigned.apk \
             app-release-aligned.apk
 
