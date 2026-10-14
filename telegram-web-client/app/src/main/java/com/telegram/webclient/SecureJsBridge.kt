@@ -30,6 +30,12 @@ class SecureJsBridge(private val context: Context) {
         UnreadBadgeManager.update(context, count)
     }
 
+    /** Diagnostik dari badge_hook.js (logcat tag: BadgeHook). */
+    @JavascriptInterface
+    fun onBadgeDebug(msg: String) {
+        android.util.Log.d("BadgeHook", msg)
+    }
+
     @JavascriptInterface
     fun verifySignature(): Boolean {
         return try {

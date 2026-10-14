@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.NotificationCompat
@@ -22,37 +23,47 @@ import me.leolin.shortcutbadger.ShortcutBadger
  * Strategi ganda untuk kompatibilitas lintas launcher:
  *  - ShortcutBadger: menulis badge langsung untuk launcher yang mendukung
  *    (Samsung, MIUI, OPPO, Vivo, dst) tanpa butuh notifikasi terlihat.
- *  - Notifikasi senyap dengan setNumber(): mekanisme native Android 8+
+ *  - Notifikasi dengan setNumber(): mekanisme native Android 8+
  *    untuk launcher yang membaca badge dari notifikasi (Pixel/stock, One UI).
  */
 object UnreadBadgeManager {
 
+    private const val TAG = "BadgeHook"
     private const val CHANNEL_ID = "unread_badge"
     private const val NOTIFICATION_ID = 9001
 
-    /** Guard anti-redudan: hanya update saat angkanya berubah. */
+    /** Nilai terakhir yang diproses (guard anti-redundan). */
     private var lastCount = -1
+
+    /** Nilai terakhir yang dilaporkan halaman web, untuk re-apply setelah izin/launch. */
+    private var knownCount = -1
 
     fun createChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // DEFAULT (bukan LOW): sebagian OEM menyembunyikan notifikasi senyap/LOW,
+            // padahal notifikasi ini dipakai sebagai sumber badge launcher.
+            // Suara/getar dimatikan di level channel.
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 context.getString(R.string.badge_channel_name),
-                NotificationManager.IMPORTANCE_LOW
+                NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
                 description = context.getString(R.string.badge_channel_desc)
                 setSound(null, null)
                 enableVibration(false)
+                enableLights(false)
             }
             val nm = context.getSystemService(NotificationManager::class.java)
             nm.createNotificationChannel(channel)
         }
     }
 
-    /** Dipanggil dari JS bridge setiap kali jumlah unread berubah. */
+    /** Dipanggil dari JS bridge setiap kali jumlah chat unread berubah. */
     fun update(context: Context, count: Int) {
+        knownCount = count
         if (count == lastCount) return
         lastCount = count
+        Log.d(TAG, "update count=$count")
         if (count > 0) {
             applyBadge(context, count)
             showNotification(context, count)
@@ -61,10 +72,26 @@ object UnreadBadgeManager {
         }
     }
 
-    /** Reset penuh (mis. saat aplikasi ditutup / pengguna keluar). */
-    fun clear(context: Context) {
+    /**
+     * Izin POST_NOTIFICATIONS baru saja di-grant. Update sebelum grant tidak
+     * memunculkan notifikasi (guard juga belum diset untuk count itu), jadi
+     * proses ulang angka terakhir agar notifikasi tampil.
+     */
+    fun onPermissionGranted(context: Context) {
+        Log.d(TAG, "izin notifikasi granted, re-apply count=$knownCount")
+        reapply(context)
+    }
+
+    /** Dipanggil dari MainActivity.onResume: repost jika notifikasi sempat di-dismiss. */
+    fun refresh(context: Context) {
+        reapply(context)
+    }
+
+    private fun reapply(context: Context) {
+        val count = knownCount
+        if (count <= 0) return
         lastCount = -1
-        clearBadge(context)
+        update(context, count)
     }
 
     private fun clearBadge(context: Context) {
@@ -85,7 +112,7 @@ object UnreadBadgeManager {
     }
 
     private fun showNotification(context: Context, count: Int) {
-        // Android 13+: tanpa izin, notifikasi tidak akan muncul → badge ikut hilang.
+        // Android 13+: tanpa izin, notifikasi tidak akan muncul.
         if (Build.VERSION.SDK_INT >= 33 && !hasNotificationPermission(context)) return
 
         val intent = Intent(context, MainActivity::class.java).apply {

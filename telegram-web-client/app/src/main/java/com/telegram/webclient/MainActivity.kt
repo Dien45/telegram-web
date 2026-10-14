@@ -18,6 +18,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var vm: AccountViewModel
     private var pinLauncher: ActivityResultLauncher<Intent>? = null
     private var notifPermissionLauncher: ActivityResultLauncher<String>? = null
+    private var badgeHookJs: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,9 +35,17 @@ class MainActivity : AppCompatActivity() {
 
         // Izin notifikasi (Android 13+) diperlukan agar badge launcher ikut tampil.
         notifPermissionLauncher =
-            registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* hasil tidak perlu ditindaklanjuti */ }
+            registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+                if (granted) UnreadBadgeManager.onPermissionGranted(this)
+            }
         UnreadBadgeManager.createChannel(this)
         UnreadBadgeManager.requestNotificationPermissionIfNeeded(this, notifPermissionLauncher!!)
+
+        badgeHookJs = try {
+            assets.open("badge_hook.js").bufferedReader().use { it.readText() }
+        } catch (e: Exception) {
+            null
+        }
 
         setupWebView()
         observeSecurity()
@@ -65,13 +74,13 @@ class MainActivity : AppCompatActivity() {
             mediaPlaybackRequiresUserGesture = true
         }
         wv.webViewClient = SecureWebViewClient(
+            badgeHookJs = badgeHookJs,
             onLoadingChanged = { loading ->
                 findViewById<ProgressBar>(R.id.progressBar)?.visibility =
                     if (loading) View.VISIBLE else View.GONE
             },
-            onPageFinished = { view ->
-                injectUnreadDetector(view)
-            }
+            onPageStarted = { view -> injectBadgeHook(view) },
+            onPageFinished = { view -> injectBadgeHook(view) }
         )
         wv.webChromeClient = SecureWebChromeClient()
         wv.setDownloadListener { url, userAgent, contentDisposition, mimetype, _ ->
@@ -82,35 +91,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Inject detektor jumlah chat belum terbaca ke halaman Telegram Web.
-     * Telegram Web menaruh jumlah unread di document.title dengan format
-     * "(N) Telegram" (atau "Telegram (N)"). Observer + interval fallback
-     * memastikan badge ikut berubah secara real-time.
+     * Fallback: sisipkan badge_hook.js lewat evaluateJavascript.
+     *
+     * Jalur utama ada di SecureWebViewClient.shouldInterceptRequest (disisipkan ke <head>
+     * sebelum script halaman). Skrip ini idempoten, jadi aman dijalankan berulang.
      */
-    private fun injectUnreadDetector(view: WebView) {
-        val script = """
-            (function() {
-              function parse() {
-                try {
-                  var t = document.title || '';
-                  var m = t.match(/^\((\d+)\)/) || t.match(/\((\d+)\)\s*$/);
-                  var n = m ? parseInt(m[1], 10) : 0;
-                  if (typeof TelegramBridge !== 'undefined') {
-                    TelegramBridge.onUnreadCount(n);
-                  }
-                } catch (e) {}
-              }
-              parse();
-              var el = document.querySelector('title');
-              if (el) {
-                new MutationObserver(parse).observe(el, {
-                  childList: true, subtree: true, characterData: true
-                });
-              }
-              setInterval(parse, 5000);
-            })();
-        """.trimIndent()
-        view.evaluateJavascript(script, null)
+    private fun injectBadgeHook(view: WebView) {
+        val hook = badgeHookJs
+        if (!hook.isNullOrEmpty()) {
+            view.evaluateJavascript(hook, null)
+        }
     }
 
     private fun observeSecurity() {
@@ -133,6 +123,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun showPinError() {
         Toast.makeText(this, R.string.pin_incorrect, Toast.LENGTH_SHORT).show()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Notifikasi/badge tampil kembali jika user sempat men-dismissnya.
+        UnreadBadgeManager.refresh(this)
     }
 
     override fun onDestroy() {
