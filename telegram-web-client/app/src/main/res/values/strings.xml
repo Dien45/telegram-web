@@ -34,6 +34,8 @@
     <string name="badge_channel_name">Pesan belum terbaca</string>
     <string name="badge_channel_desc">Menampilkan jumlah chat belum terbaca di ikon aplikasi</string>
     <string name="badge_open_hint">Ketuk untuk membuka Telegram</string>
+    <string name="keep_alive_channel_name">Sinkronisasi latar belakang</string>
+    <string name="keep_alive_channel_desc">Menjaga notifikasi dan badge tetap aktif</string>
     <plurals name="unread_messages">
         <item quantity="one">%d chat belum dibaca</item>
         <item quantity="other">%d chat belum dibaca</item>

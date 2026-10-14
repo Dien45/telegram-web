@@ -15,6 +15,13 @@ import com.telegram.webclient.ui.account.AccountViewModel
 
 class MainActivity : AppCompatActivity() {
 
+    companion object {
+        /** Dipakai service untuk tahu apakah WebView masih hidup untuk di-poll. */
+        @Volatile
+        var isAlive: Boolean = false
+            private set
+    }
+
     private lateinit var vm: AccountViewModel
     private var pinLauncher: ActivityResultLauncher<Intent>? = null
     private var notifPermissionLauncher: ActivityResultLauncher<String>? = null
@@ -23,6 +30,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        isAlive = true
         vm = ViewModelProvider(this)[AccountViewModel::class.java]
 
         pinLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -49,6 +57,7 @@ class MainActivity : AppCompatActivity() {
 
         setupWebView()
         observeSecurity()
+        BadgeKeepAliveService.start(this)
     }
 
     private fun setupWebView() {
@@ -133,6 +142,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        isAlive = false
+        BadgeKeepAliveService.stop(this)
         clearWebView()
     }
 
