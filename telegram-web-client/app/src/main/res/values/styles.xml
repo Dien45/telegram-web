@@ -1,69 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources xmlns:app="http://schemas.android.com/apk/res-auto">
+<resources>
     <style name="Theme.TelegramWebClient" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="android:statusBarColor">@color/clay_primary</item>
         <item name="android:navigationBarColor">@color/clay_background</item>
         <item name="android:windowBackground">@color/clay_background</item>
         <item name="colorPrimary">@color/clay_primary</item>
-        <item name="colorPrimaryVariant">@color/clay_primary_dark</item>
         <item name="colorSecondary">@color/clay_accent</item>
-        <item name="colorSecondaryVariant">@color/clay_accent_dark</item>
         <item name="colorSurface">@color/clay_surface</item>
         <item name="colorOnSurface">@color/clay_text_primary</item>
         <item name="android:textColorPrimary">@color/clay_text_primary</item>
         <item name="android:textColorSecondary">@color/clay_text_secondary</item>
+        <!-- Material3 sets these two attrs independently, for AppCompat and Material builders. -->
+        <item name="alertDialogTheme">@style/ThemeOverlay.Clay.Dialog</item>
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.Clay.Dialog</item>
     </style>
 
-    <style name="Theme.TelegramWebClient.Dark" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="android:statusBarColor">@color/clay_primary_dark</item>
-        <item name="android:navigationBarColor">@color/clay_background_dark</item>
-        <item name="android:windowBackground">@color/clay_background_dark</item>
-        <item name="colorPrimary">@color/clay_primary_dark</item>
-        <item name="colorPrimaryVariant">@color/clay_primary</item>
-        <item name="colorSecondary">@color/clay_accent_dark</item>
-        <item name="colorSecondaryVariant">@color/clay_accent</item>
-        <item name="colorSurface">@color/clay_surface_dark</item>
-        <item name="colorOnSurface">@color/clay_text_primary_dark</item>
-        <item name="android:textColorPrimary">@color/clay_text_primary_dark</item>
-        <item name="android:textColorSecondary">@color/clay_text_secondary_dark</item>
+    <!-- Clay sheet for alert dialogs: puffy surface, 28dp corners, readable labels. -->
+    <style name="ThemeOverlay.Clay.Dialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="android:dialogCornerRadius">28dp</item>
+        <item name="colorSurface">@color/clay_surface</item>
+        <item name="colorSurfaceContainerHigh">@color/clay_surface</item>
+        <item name="colorOnSurface">@color/clay_text_primary</item>
+        <item name="colorOnSurfaceVariant">@color/clay_text_secondary</item>
+        <!-- Action labels sit on clay; the primary text token keeps them readable. -->
+        <item name="colorPrimary">@color/clay_text_primary</item>
     </style>
 
-    <style name="SplashScreen" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="android:windowBackground">@color/clay_background</item>
-        <item name="android:statusBarColor">@color/clay_primary</item>
-    </style>
-
-    <style name="SplashScreen.Dark" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="android:windowBackground">@color/clay_background_dark</item>
-        <item name="android:statusBarColor">@color/clay_primary_dark</item>
-    </style>
-
-    <!-- Claymorphism card style -->
-    <style name="Widget.ClayCard" parent="Widget.Material3.CardView.Elevated">
-        <item name="cardBackgroundColor">@color/clay_surface</item>
-        <item name="cardCornerRadius">24dp</item>
-        <item name="cardElevation">6dp</item>
-        <item name="android:padding">16dp</item>
-    </style>
-
-    <style name="Widget.ClayCard.Dark" parent="Widget.Material3.CardView.Elevated">
-        <item name="cardBackgroundColor">@color/clay_surface_dark</item>
-        <item name="cardCornerRadius">24dp</item>
-        <item name="cardElevation">8dp</item>
-        <item name="android:padding">16dp</item>
-    </style>
-
-    <!-- Claymorphism button -->
-    <style name="Widget.ClayButton" parent="Widget.Material3.Button.TextButton">
-        <item name="android:textColor">@color/clay_text_primary</item>
-        <item name="android:background">@drawable/clay_button_background</item>
-        <item name="iconTint">@color/clay_accent</item>
-    </style>
-
-    <style name="Widget.ClayButton.Dark" parent="Widget.Material3.Button.TextButton">
-        <item name="android:textColor">@color/clay_text_primary_dark</item>
-        <item name="android:background">@drawable/clay_button_background_dark</item>
-        <item name="iconTint">@color/clay_accent_dark</item>
+    <!-- Clay field: the Material box itself is the surface, so no background is stacked on top. -->
+    <style name="Widget.ClayTextInputLayout" parent="Widget.Material3.TextInputLayout.FilledBox">
+        <item name="boxBackgroundColor">@color/clay_surface</item>
+        <item name="boxStrokeWidth">0dp</item>
+        <item name="boxStrokeWidthFocused">0dp</item>
+        <item name="boxCornerRadiusTopStart">28dp</item>
+        <item name="boxCornerRadiusTopEnd">28dp</item>
+        <item name="boxCornerRadiusBottomStart">28dp</item>
+        <item name="boxCornerRadiusBottomEnd">28dp</item>
+        <item name="hintTextColor">@color/clay_text_secondary</item>
+        <item name="android:textColorHint">@color/clay_text_secondary</item>
     </style>
 
     <!-- Claymorphism account selector pill: puffy surface + chevron affordance -->

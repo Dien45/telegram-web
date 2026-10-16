@@ -12,7 +12,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
-import androidx.core.view.WindowCompat
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.telegram.webclient.security.PinCheckResult
@@ -41,7 +40,6 @@ class LockActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_lock)
-        WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = false
 
         securityStore = SecurityStore()
         setupMode = intent.getBooleanExtra(EXTRA_SETUP, !securityStore.isPinSet())

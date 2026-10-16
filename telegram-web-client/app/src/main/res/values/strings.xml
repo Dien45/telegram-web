@@ -13,6 +13,8 @@
     <string name="pin_incorrect_attempts">PIN salah. Sisa percobaan: %1$d</string>
     <string name="pin_lockout">Terlalu banyak percobaan. Coba lagi dalam %1$d detik.</string>
     <string name="unlock">Buka</string>
+    <string name="pin_hint">PIN 6 digit</string>
+    <string name="biometric_use">Gunakan biometrik</string>
     <string name="biometric_prompt">Buka Telegram Web Client</string>
     <string name="biometric_title">Verifikasi Identitas</string>
     <string name="biometric_subtitle">Gunakan biometrik atau PIN untuk mengakses</string>

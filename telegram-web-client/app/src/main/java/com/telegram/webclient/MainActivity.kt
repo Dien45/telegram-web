@@ -8,11 +8,9 @@ import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import android.view.View
-import android.view.inputmethod.EditorInfo
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.widget.Button
-import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ProgressBar
@@ -20,13 +18,14 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.webkit.JavaScriptReplyProxy
 import androidx.webkit.Profile
 import androidx.webkit.WebMessageCompat
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.textfield.TextInputEditText
 import com.telegram.webclient.accounts.MultiProfileUnsupportedException
 import com.telegram.webclient.accounts.TelegramAccount
 import com.telegram.webclient.accounts.TelegramAccountStore
@@ -320,7 +319,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
         if (accounts.isEmpty()) return
-        AlertDialog.Builder(this)
+        MaterialAlertDialogBuilder(this)
             .setTitle(R.string.select_account)
             .setItems(accounts.map { it.displayName }.toTypedArray()) { _, index ->
                 val selected = accounts[index]
@@ -345,18 +344,13 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val input = EditText(this).apply {
-            hint = getString(R.string.account_name_hint)
-            inputType = android.text.InputType.TYPE_CLASS_TEXT or
-                android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
-            setSingleLine(true)
-            setText(getString(R.string.account_default_name, accounts.size + 1))
-            imeOptions = EditorInfo.IME_ACTION_DONE
-        }
-        AlertDialog.Builder(this)
+        val nameInput = layoutInflater.inflate(R.layout.dialog_add_account, null)
+        val input = nameInput.findViewById<TextInputEditText>(R.id.etAccountName)
+        input.setText(getString(R.string.account_default_name, accounts.size + 1))
+        MaterialAlertDialogBuilder(this)
             .setTitle(R.string.add_account)
             .setMessage(R.string.add_account_description)
-            .setView(input)
+            .setView(nameInput)
             .setNegativeButton(android.R.string.cancel, null)
             .setPositiveButton(R.string.add_account) { _, _ ->
                 val name = input.text?.toString().orEmpty().trim()
@@ -380,7 +374,7 @@ class MainActivity : AppCompatActivity() {
     private fun confirmDeleteActiveAccount() {
         val account = currentAccount ?: return
         val count = runCatching { accountStore.getAccounts().size }.getOrDefault(0)
-        AlertDialog.Builder(this)
+        MaterialAlertDialogBuilder(this)
             .setTitle(R.string.delete_account)
             .setMessage(getString(R.string.delete_account_confirmation, account.displayName))
             .setNegativeButton(android.R.string.cancel, null)
