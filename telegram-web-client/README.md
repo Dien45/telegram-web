@@ -1,81 +1,64 @@
 # Telegram Web Client for Android
 
-Aplikasi klien Telegram Web untuk Android dengan keamanan berlapis dan tema Claymorphism.
+Aplikasi Android Kotlin yang membungkus Telegram Web resmi dalam WebView. Fitur keamanan berikut sudah diimplementasikan pada cabang ini.
 
-## Fitur Utama
+## Fitur yang tersedia
 
-- **Keamanan Berlapis**: Enkripsi AES-GCM, AndroidKeystore, biometric prompt
-- **WebView Aman**: Whitelist domain, tanpa file access, mixed content disabled
-- **Multi-Akun**: Isolasi profil per-akun dengan autentikasi PIN/biometrik
-- **Anti-Root**: Peringatan keamanan (tidak memblokir)
-- **Auto-Lock**: Kunci otomatis saat idle
-- **Update Checker**: Pemeriksaan update GitHub Releases dengan verifikasi SHA-256
-- **Download Manager**: Unduhan aman ke external storage
-- **Proxy Support**: Proxy per-akun (opsional, terenkripsi)
-- **Telemetri Opt-In**: Data penggunaan dikirim ke server self-hosted (opsional)
-- **Tema Claymorphism**: Warna biru muda dengan aksen pink muda
+- **Kunci aplikasi:** saat pertama kali dibuka, pengguna membuat dan mengonfirmasi PIN aplikasi 6 digit. PIN dapat dipakai sebagai fallback biometrik kuat bila perangkat mendukungnya.
+- **Pembatasan percobaan PIN:** setelah 5 percobaan salah, input PIN dikunci selama 5 menit. Status lockout disimpan terenkripsi.
+- **Auto-lock:** aplikasi meminta autentikasi lagi setelah 1 menit tanpa interaksi. WebView tidak dibuat/dibuka sebelum autentikasi berhasil.
+- **Penyimpanan metadata terenkripsi:** hash PIN bersalt (PBKDF2-HMAC-SHA-256) serta daftar/nama akun disimpan melalui `EncryptedSharedPreferences`; master key dikelola Android Keystore.
+- **Multi-akun:** tiap akun memakai profil WebView tersendiri melalui AndroidX WebKit `MULTI_PROFILE`, termasuk cookie dan data browsing yang dipisahkan. Pengguna dapat menambah, memilih, dan menghapus akun.
+- **Fail-closed untuk isolasi:** akun tambahan tidak dibuat atau dibuka bila Android System WebView pada perangkat tidak mendukung profil terpisah. Perbarui System WebView untuk mengaktifkan fitur tersebut; aplikasi tidak diam-diam membagikan cookie.
+- **WebView yang diperkeras:** file access dan mixed content dinonaktifkan, cleartext traffic ditolak, dan navigasi dibatasi ke domain Telegram yang diizinkan.
+- **Badge unread:** bridge badge menggunakan `WebMessageListener` yang dibatasi ke origin HTTPS `web.telegram.org` dan frame utama; bila fitur ini tidak didukung WebView, badge native dinonaktifkan.
 
-## Struktur Proyek
+## Batas keamanan yang perlu diketahui
 
-```
-telegram-web-client/
-├── app/
-│   ├── src/main/
-│   │   ├── java/com/telegram/webclient/
-│   │   │   ├── BootReceiver.kt
-│   │   │   ├── DownloadManager.kt
-│   │   │   ├── LockActivity.kt
-│   │   │   ├── MainActivity.kt
-│   │   │   ├── SecureJsBridge.kt
-│   │   │   ├── SecureWebChromeClient.kt
-│   │   │   ├── SecureWebViewClient.kt
-│   │   │   ├── TelegramApp.kt
-│   │   │   └── ui/account/AccountViewModel.kt
-│   │   ├── res/
-│   │   │   ├── drawable/
-│   │   │   │   ├── clay_button_background.xml
-│   │   │   │   └── clay_button_background_dark.xml
-│   │   │   ├── layout/
-│   │   │   │   ├── activity_lock.xml
-│   │   │   │   ├── activity_main.xml
-│   │   │   │   └── splash/
-│   │   │   │       ├── SplashScreen.xml
-│   │   │   │       └── SplashScreen.Dark.xml
-│   │   │   └── values/
-│   │   │       ├── colors.xml
-│   │   │       ├── strings.xml
-│   │   │       └── styles.xml
-│   │   └── build.gradle.kts
-├── gradle/wrapper/
-│   ├── gradle-wrapper.jar
-│   └── gradle-wrapper.properties
-├── build.gradle.kts
-├── settings.gradle.kts
-├── gradlew
-└── README.md
+AndroidX WebView menyediakan **isolasi profil**, bukan enkripsi penuh atas storage Chromium. Daftar akun, nama akun, salt/hash PIN, dan metadata aplikasi dienkripsi oleh Android Keystore; cookie, IndexedDB/local storage, dan cache Telegram dikelola oleh WebView di sandbox aplikasi dan **tidak dienkripsi oleh aplikasi secara terpisah**. Karena itu proyek ini tidak mengklaim bahwa sesi Telegram terlindungi dari perangkat yang sudah di-root atau proses aplikasi yang sedang berjalan.
+
+Menghapus akun meminta WebView menghapus profilnya; sebagian operasi WebView berlangsung asinkron. Pada profil default, aplikasi membersihkan cookie, Web Storage, dan cache karena profil default tidak dapat dihapus seluruhnya.
+
+Aplikasi tidak mengaktifkan `FLAG_SECURE`, sehingga screenshot tetap diizinkan. Penguncian aplikasi juga bukan pengganti screen lock Android.
+
+## Fitur yang belum diimplementasikan
+
+Proxy per akun, telemetri opt-in, deteksi/peringatan root, pemeriksaan update GitHub dan verifikasi APK masih belum tersedia. `UpdateCheckWorker` saat ini hanya mencatat versi lokal.
+
+## Build dan test
+
+Persyaratan: JDK 17, Android SDK 34, dan Android System WebView pada perangkat/emulator.
+
+```bash
+cd telegram-web-client
+./gradlew testDebugUnitTest
+./gradlew assembleDebug
 ```
 
-## Cara Build APK
+APK debug: `app/build/outputs/apk/debug/app-debug.apk`.
 
-1. Install Android Studio atau Android SDK command-line tools
-2. Pastikan `JAVA_HOME` dan `ANDROID_HOME` sudah diatur
-3. Jalankan di terminal:
-   ```bash
-   cd telegram-web-client
-   ./gradlew assembleDebug
-   ```
-4. APK akan dihasilkan di `app/build/outputs/apk/debug/app-debug.apk`
+Tes skrip badge (Node.js):
 
-## Keamanan
+```bash
+node tools/badge_hook.test.js
+```
 
-- Enkripsi AES-GCM untuk data lokal
-- AndroidKeystore untuk master key
-- BiometricPrompt untuk autentikasi
-- Whitelist domain (hanya web.telegram.org dan k.telegram.org)
-- Tidak ada akses file:// ke external storage
-- Mixed content disabled
-- HTTPS-only
+Build release CI saat ini menghasilkan artifact bertanda tangan keystore sementara. Jangan gunakan APK CI sebagai jalur upgrade stabil sebelum signing key tetap disimpan dengan aman dan konfigurasi workflow diperbaiki.
 
-## Lisensi
+## Struktur kode terkait
 
-MIT License
+```text
+app/src/main/java/com/telegram/webclient/
+├── accounts/
+│   ├── TelegramAccountStore.kt
+│   └── WebViewProfileManager.kt
+├── security/
+│   ├── PinHasher.kt
+│   └── SecurityStore.kt
+├── LockActivity.kt
+├── MainActivity.kt
+├── SecureWebViewClient.kt
+└── TelegramApp.kt
+```
+
+Lisensi: MIT.

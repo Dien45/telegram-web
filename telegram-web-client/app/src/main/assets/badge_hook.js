@@ -27,26 +27,32 @@
     count: -1
   };
 
-  function debug(msg) {
+  // Native side exposes this object only to the exact HTTPS Telegram Web origin
+  // through AndroidX WebMessageListener; it is not a JavaScriptInterface.
+  function postNative(payload) {
     try {
-      if (typeof TelegramBridge !== 'undefined' && TelegramBridge.onBadgeDebug) {
-        TelegramBridge.onBadgeDebug(String(msg));
-      } else if (window.console && console.log) {
-        console.log('[BadgeHook] ' + msg);
+      var bridge = window.TelegramBridge;
+      if (bridge && typeof bridge.postMessage === 'function') {
+        bridge.postMessage(JSON.stringify(payload));
+        return true;
       }
     } catch (e) {}
+    return false;
+  }
+
+  function debug(msg) {
+    var text = String(msg).slice(0, 200);
+    if (!postNative({ type: 'debug', message: text }) && window.console && console.log) {
+      console.log('[BadgeHook] ' + text);
+    }
   }
 
   function forward(n) {
     n = Math.max(0, n | 0);
     if (state.count === n) return;
     state.count = n;
-    try {
-      if (typeof TelegramBridge !== 'undefined' && TelegramBridge.onUnreadCount) {
-        TelegramBridge.onUnreadCount(n);
-        debug('forward ' + n + ' via ' + state.path);
-      }
-    } catch (e) {}
+    postNative({ type: 'unread', count: n });
+    debug('forward ' + n + ' via ' + state.path);
   }
 
   // ---------------------------------------------------------------- Web K

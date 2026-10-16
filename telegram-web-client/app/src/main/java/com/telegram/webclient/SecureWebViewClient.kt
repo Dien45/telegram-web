@@ -16,7 +16,8 @@ class SecureWebViewClient(
     private val badgeHookJs: String? = null,
     private val onLoadingChanged: ((Boolean) -> Unit)? = null,
     private val onPageStarted: ((WebView) -> Unit)? = null,
-    private val onPageFinished: ((WebView) -> Unit)? = null
+    private val onPageFinished: ((WebView) -> Unit)? = null,
+    private val profileCookieManager: CookieManager? = null
 ) : WebViewClient() {
 
     companion object {
@@ -74,7 +75,7 @@ class SecureWebViewClient(
                 "Accept",
                 "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
             )
-            CookieManager.getInstance().getCookie(url)?.let {
+            (profileCookieManager ?: CookieManager.getInstance()).getCookie(url)?.let {
                 conn.setRequestProperty("Cookie", it)
             }
             if (conn.responseCode != HttpURLConnection.HTTP_OK) {

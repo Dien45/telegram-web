@@ -1,68 +1,235 @@
 package com.telegram.webclient
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
+import android.util.Log
 import android.view.View
+import android.view.inputmethod.EditorInfo
 import android.webkit.WebSettings
 import android.webkit.WebView
+import android.widget.Button
+import android.widget.EditText
+import android.widget.FrameLayout
+import android.widget.LinearLayout
 import android.widget.ProgressBar
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.ViewModelProvider
-import com.telegram.webclient.ui.account.AccountViewModel
+import androidx.webkit.JavaScriptReplyProxy
+import androidx.webkit.Profile
+import androidx.webkit.WebMessageCompat
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
+import com.telegram.webclient.accounts.MultiProfileUnsupportedException
+import com.telegram.webclient.accounts.TelegramAccount
+import com.telegram.webclient.accounts.TelegramAccountStore
+import com.telegram.webclient.accounts.WebViewProfileManager
+import com.telegram.webclient.security.SecurityStore
+import org.json.JSONObject
 
 class MainActivity : AppCompatActivity() {
 
     companion object {
-        /** Dipakai service untuk tahu apakah WebView masih hidup untuk di-poll. */
+        private const val TAG = "TelegramWebClient"
+        private const val IDLE_LOCK_MILLIS = 60_000L
+        private const val MAX_BRIDGE_MESSAGE_LENGTH = 2_048
+        private const val MAX_UNREAD_COUNT = 1_000_000
+
+        /** Dipakai service untuk tahu apakah Activity masih ada untuk update badge. */
         @Volatile
         var isAlive: Boolean = false
             private set
     }
 
-    private lateinit var vm: AccountViewModel
-    private var pinLauncher: ActivityResultLauncher<Intent>? = null
-    private var notifPermissionLauncher: ActivityResultLauncher<String>? = null
+    private lateinit var securityStore: SecurityStore
+    private lateinit var accountStore: TelegramAccountStore
+    private lateinit var lockLauncher: ActivityResultLauncher<Intent>
+    private lateinit var notificationPermissionLauncher: ActivityResultLauncher<String>
+
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var currentWebView: WebView? = null
+    private var currentAccount: TelegramAccount? = null
     private var badgeHookJs: String? = null
+    private var authenticated = false
+    private var lockScreenLaunched = false
+    private var activityResumed = false
+    private var lastInteractionAt = 0L
+
+    private val idleLockRunnable = Runnable {
+        if (!authenticated) return@Runnable
+        val idleFor = SystemClock.elapsedRealtime() - lastInteractionAt
+        if (idleFor >= IDLE_LOCK_MILLIS) {
+            requireUnlock()
+        } else {
+            scheduleIdleLock()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         isAlive = true
-        vm = ViewModelProvider(this)[AccountViewModel::class.java]
 
-        pinLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        securityStore = SecurityStore()
+        accountStore = TelegramAccountStore()
+        badgeHookJs = runCatching {
+            assets.open("badge_hook.js").bufferedReader().use { it.readText() }
+        }.getOrNull()
+
+        lockLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            lockScreenLaunched = false
             if (result.resultCode == RESULT_OK) {
-                unlockApp()
+                authenticated = true
+                lastInteractionAt = SystemClock.elapsedRealtime()
+                onAuthenticated()
             } else {
-                showPinError()
+                // Never reveal the underlying WebView after a canceled lock/setup screen.
+                authenticated = false
+                currentWebView?.visibility = View.INVISIBLE
+                finish()
             }
         }
 
-        // Izin notifikasi (Android 13+) diperlukan agar badge launcher ikut tampil.
-        notifPermissionLauncher =
+        notificationPermissionLauncher =
             registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
                 if (granted) UnreadBadgeManager.onPermissionGranted(this)
             }
-        UnreadBadgeManager.createChannel(this)
-        UnreadBadgeManager.requestNotificationPermissionIfNeeded(this, notifPermissionLauncher!!)
 
-        badgeHookJs = try {
-            assets.open("badge_hook.js").bufferedReader().use { it.readText() }
-        } catch (e: Exception) {
-            null
-        }
+        findViewById<Button>(R.id.btnSelectAccount).setOnClickListener { showAccountPicker() }
+        findViewById<Button>(R.id.btnAddAccount).setOnClickListener { promptAddAccount() }
+        findViewById<Button>(R.id.btnDeleteAccount).setOnClickListener { confirmDeleteActiveAccount() }
 
-        setupWebView()
-        observeSecurity()
-        BadgeKeepAliveService.start(this)
+        launchLockScreen()
     }
 
-    private fun setupWebView() {
-        val wv = findViewById<WebView>(R.id.webView)
-        wv.settings.apply {
+    override fun onResume() {
+        super.onResume()
+        activityResumed = true
+        UnreadBadgeManager.refresh(this)
+        if (!authenticated) {
+            launchLockScreen()
+        } else if (SystemClock.elapsedRealtime() - lastInteractionAt >= IDLE_LOCK_MILLIS) {
+            requireUnlock()
+        } else {
+            scheduleIdleLock()
+        }
+    }
+
+    override fun onPause() {
+        activityResumed = false
+        super.onPause()
+    }
+
+    override fun onUserInteraction() {
+        super.onUserInteraction()
+        if (authenticated) {
+            lastInteractionAt = SystemClock.elapsedRealtime()
+            scheduleIdleLock()
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        mainHandler.removeCallbacks(idleLockRunnable)
+        isAlive = false
+        BadgeKeepAliveService.stop(this)
+        destroyCurrentWebView()
+    }
+
+    private fun launchLockScreen() {
+        if (lockScreenLaunched || isFinishing) return
+        lockScreenLaunched = true
+        lockLauncher.launch(LockActivity.createIntent(this, setup = !securityStore.isPinSet()))
+    }
+
+    private fun onAuthenticated() {
+        findViewById<LinearLayout>(R.id.accountBar).visibility = View.VISIBLE
+        runCatching { accountStore.ensureInitialAccount() }
+            .onFailure {
+                Log.e(TAG, "Could not load encrypted account data", it)
+                showStatus(getString(R.string.account_storage_error))
+                return
+            }
+
+        UnreadBadgeManager.createChannel(this)
+        UnreadBadgeManager.requestNotificationPermissionIfNeeded(this, notificationPermissionLauncher)
+        BadgeKeepAliveService.start(this)
+        renderActiveAccount()
+        scheduleIdleLock()
+    }
+
+    private fun requireUnlock() {
+        if (!authenticated || isFinishing) return
+        authenticated = false
+        mainHandler.removeCallbacks(idleLockRunnable)
+        currentWebView?.visibility = View.INVISIBLE
+        findViewById<LinearLayout>(R.id.accountBar).visibility = View.GONE
+        if (activityResumed) launchLockScreen()
+    }
+
+    private fun scheduleIdleLock() {
+        mainHandler.removeCallbacks(idleLockRunnable)
+        if (authenticated) mainHandler.postDelayed(idleLockRunnable, IDLE_LOCK_MILLIS)
+    }
+
+    private fun renderActiveAccount() {
+        val account = runCatching {
+            accountStore.getActiveAccount() ?: accountStore.ensureInitialAccount()
+        }.getOrElse {
+            Log.e(TAG, "Could not read account list", it)
+            destroyCurrentWebView()
+            showStatus(getString(R.string.account_storage_error))
+            return
+        }
+        currentAccount = account
+        findViewById<Button>(R.id.btnSelectAccount).text = account.displayName
+        UnreadBadgeManager.update(this, 0)
+        destroyCurrentWebView()
+
+        if (account.profileName != Profile.DEFAULT_PROFILE_NAME &&
+            !WebViewProfileManager.supportsMultiProfile()
+        ) {
+            showStatus(getString(R.string.profile_isolation_required))
+            return
+        }
+
+        val webView = WebView(this)
+        try {
+            // Profile must be assigned before touching settings, clients, or loading a URL.
+            WebViewProfileManager.attachProfile(webView, account.profileName)
+            configureWebView(webView)
+        } catch (e: Exception) {
+            Log.e(TAG, "Could not create isolated WebView profile", e)
+            runCatching { webView.destroy() }
+            showStatus(getString(R.string.profile_open_error))
+            return
+        }
+
+        val container = findViewById<FrameLayout>(R.id.webViewContainer)
+        container.addView(
+            webView,
+            0,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+        )
+        currentWebView = webView
+        findViewById<TextView>(R.id.tvStatus).visibility = View.GONE
+        findViewById<ProgressBar>(R.id.progressBar).visibility = View.VISIBLE
+        webView.visibility = View.VISIBLE
+        webView.loadUrl(TelegramApp.TELEGRAM_WEB_URL)
+    }
+
+    private fun configureWebView(webView: WebView) {
+        webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
             databaseEnabled = false
@@ -82,75 +249,197 @@ class MainActivity : AppCompatActivity() {
             setGeolocationEnabled(false)
             mediaPlaybackRequiresUserGesture = true
         }
-        wv.webViewClient = SecureWebViewClient(
+
+        val profileCookies = WebViewProfileManager.cookieManager(webView)
+        webView.webViewClient = SecureWebViewClient(
             badgeHookJs = badgeHookJs,
             onLoadingChanged = { loading ->
                 findViewById<ProgressBar>(R.id.progressBar)?.visibility =
                     if (loading) View.VISIBLE else View.GONE
             },
             onPageStarted = { view -> injectBadgeHook(view) },
-            onPageFinished = { view -> injectBadgeHook(view) }
+            onPageFinished = { view -> injectBadgeHook(view) },
+            profileCookieManager = profileCookies
         )
-        wv.webChromeClient = SecureWebChromeClient()
-        wv.setDownloadListener { url, userAgent, contentDisposition, mimetype, _ ->
+        webView.webChromeClient = SecureWebChromeClient()
+        webView.setDownloadListener { url, userAgent, contentDisposition, mimetype, _ ->
             DownloadManager(this).download(url, userAgent, contentDisposition, mimetype)
         }
-        wv.addJavascriptInterface(SecureJsBridge(this), "TelegramBridge")
-        wv.loadUrl(TelegramApp.TELEGRAM_WEB_URL)
+        installBadgeMessageListener(webView)
     }
 
-    /**
-     * Fallback: sisipkan badge_hook.js lewat evaluateJavascript.
-     *
-     * Jalur utama ada di SecureWebViewClient.shouldInterceptRequest (disisipkan ke <head>
-     * sebelum script halaman). Skrip ini idempoten, jadi aman dijalankan berulang.
-     */
+    /** Uses an origin- and frame-restricted message listener instead of addJavascriptInterface. */
+    private fun installBadgeMessageListener(webView: WebView) {
+        if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
+            Log.w(TAG, "WebMessageListener unsupported; native unread badge is disabled")
+            return
+        }
+        WebViewCompat.addWebMessageListener(
+            webView,
+            "TelegramBridge",
+            setOf("https://web.telegram.org"),
+            object : WebViewCompat.WebMessageListener {
+                override fun onPostMessage(
+                    view: WebView,
+                    message: WebMessageCompat,
+                    sourceOrigin: Uri,
+                    isMainFrame: Boolean,
+                    replyProxy: JavaScriptReplyProxy
+                ) {
+                    if (!isMainFrame || sourceOrigin.scheme != "https" ||
+                        sourceOrigin.host != "web.telegram.org" ||
+                        message.type != WebMessageCompat.TYPE_STRING
+                    ) return
+
+                    val raw = message.data ?: return
+                    if (raw.length > MAX_BRIDGE_MESSAGE_LENGTH) return
+                    val payload = runCatching { JSONObject(raw) }.getOrNull() ?: return
+                    when (payload.optString("type")) {
+                        "unread" -> {
+                            val count = payload.optInt("count", -1)
+                            if (count in 0..MAX_UNREAD_COUNT) {
+                                UnreadBadgeManager.update(applicationContext, count)
+                            }
+                        }
+                        "debug" -> if (BuildConfig.DEBUG) {
+                            Log.d("BadgeHook", payload.optString("message").take(200))
+                        }
+                    }
+                }
+            }
+        )
+    }
+
     private fun injectBadgeHook(view: WebView) {
-        val hook = badgeHookJs
-        if (!hook.isNullOrEmpty()) {
-            view.evaluateJavascript(hook, null)
+        badgeHookJs?.takeIf { it.isNotEmpty() }?.let { view.evaluateJavascript(it, null) }
+    }
+
+    private fun showAccountPicker() {
+        val accounts = runCatching { accountStore.getAccounts() }.getOrElse {
+            showStatus(getString(R.string.account_storage_error))
+            return
+        }
+        if (accounts.isEmpty()) return
+        AlertDialog.Builder(this)
+            .setTitle(R.string.select_account)
+            .setItems(accounts.map { it.displayName }.toTypedArray()) { _, index ->
+                val selected = accounts[index]
+                if (selected.id != currentAccount?.id) {
+                    runCatching { accountStore.setActiveAccount(selected.id) }
+                        .onSuccess { renderActiveAccount() }
+                        .onFailure { showStatus(getString(R.string.account_storage_error)) }
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun promptAddAccount() {
+        val accounts = runCatching { accountStore.getAccounts() }.getOrElse {
+            showStatus(getString(R.string.account_storage_error))
+            return
+        }
+        val supportsProfiles = WebViewProfileManager.supportsMultiProfile()
+        if (accounts.isNotEmpty() && !supportsProfiles) {
+            Toast.makeText(this, R.string.profile_isolation_required, Toast.LENGTH_LONG).show()
+            return
+        }
+
+        val input = EditText(this).apply {
+            hint = getString(R.string.account_name_hint)
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or
+                android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            setSingleLine(true)
+            setText(getString(R.string.account_default_name, accounts.size + 1))
+            imeOptions = EditorInfo.IME_ACTION_DONE
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.add_account)
+            .setMessage(R.string.add_account_description)
+            .setView(input)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.add_account) { _, _ ->
+                val name = input.text?.toString().orEmpty().trim()
+                if (name.isEmpty()) {
+                    Toast.makeText(this, R.string.account_name_required, Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                runCatching { accountStore.createAccount(name, supportsProfiles) }
+                    .onSuccess { renderActiveAccount() }
+                    .onFailure { error ->
+                        if (error is MultiProfileUnsupportedException) {
+                            Toast.makeText(this, R.string.profile_isolation_required, Toast.LENGTH_LONG).show()
+                        } else {
+                            Toast.makeText(this, R.string.account_storage_error, Toast.LENGTH_LONG).show()
+                        }
+                    }
+            }
+            .show()
+    }
+
+    private fun confirmDeleteActiveAccount() {
+        val account = currentAccount ?: return
+        val count = runCatching { accountStore.getAccounts().size }.getOrDefault(0)
+        AlertDialog.Builder(this)
+            .setTitle(R.string.delete_account)
+            .setMessage(getString(R.string.delete_account_confirmation, account.displayName))
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.delete_account) { _, _ ->
+                deleteAccount(account, count)
+            }
+            .show()
+    }
+
+    private fun deleteAccount(account: TelegramAccount, previousCount: Int) {
+        // Destroy the active WebView before asking WebView to remove its profile.
+        destroyCurrentWebView()
+        val wipeRequested = WebViewProfileManager.deleteProfile(this, account.profileName)
+        val remaining = runCatching { accountStore.removeAccount(account.id) }.getOrElse {
+            Log.e(TAG, "Could not remove encrypted account metadata", it)
+            showStatus(getString(R.string.account_storage_error))
+            return
+        }
+        if (remaining.isEmpty()) {
+            runCatching { accountStore.createAccount(getString(R.string.account_default_name, 1), false) }
+                .onFailure {
+                    Log.e(TAG, "Could not create a fresh default account", it)
+                    showStatus(getString(R.string.account_storage_error))
+                    return
+                }
+        }
+        currentAccount = null
+        if (wipeRequested) {
+            Toast.makeText(this, R.string.account_removed, Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(this, R.string.account_removed_wipe_warning, Toast.LENGTH_LONG).show()
+        }
+        if (previousCount == 1) {
+            findViewById<Button>(R.id.btnSelectAccount).text = getString(R.string.account_default_name, 1)
+        }
+        renderActiveAccount()
+    }
+
+    private fun showStatus(message: String) {
+        destroyCurrentWebView()
+        findViewById<ProgressBar>(R.id.progressBar).visibility = View.GONE
+        findViewById<TextView>(R.id.tvStatus).apply {
+            text = message
+            visibility = View.VISIBLE
         }
     }
 
-    private fun observeSecurity() {
-        vm.locked.observe(this) { locked ->
-            if (locked) showLock() else unlockApp()
-        }
-        vm.timeoutExpired.observe(this) { expired ->
-            if (expired) vm.lock()
-        }
+    private fun destroyCurrentWebView() {
+        val webView = currentWebView ?: return
+        currentWebView = null
+        findViewById<FrameLayout>(R.id.webViewContainer).removeView(webView)
+        runCatching {
+            webView.stopLoading()
+            webView.removeJavascriptInterface("TelegramBridge")
+            webView.webChromeClient = null
+            webView.setDownloadListener(null)
+            webView.clearHistory()
+            webView.destroy()
+        }.onFailure { Log.w(TAG, "WebView cleanup failed", it) }
     }
 
-    private fun showLock() {
-        val intent = Intent(this, LockActivity::class.java)
-        pinLauncher?.launch(intent)
-    }
-
-    private fun unlockApp() {
-        findViewById<WebView>(R.id.webView).visibility = View.VISIBLE
-    }
-
-    private fun showPinError() {
-        Toast.makeText(this, R.string.pin_incorrect, Toast.LENGTH_SHORT).show()
-    }
-
-    override fun onResume() {
-        super.onResume()
-        // Notifikasi/badge tampil kembali jika user sempat men-dismissnya.
-        UnreadBadgeManager.refresh(this)
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        isAlive = false
-        BadgeKeepAliveService.stop(this)
-        clearWebView()
-    }
-
-    private fun clearWebView() {
-        findViewById<WebView>(R.id.webView)?.apply {
-            clearHistory()
-            destroy()
-        }
-    }
 }

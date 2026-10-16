@@ -33,8 +33,11 @@ function makeSandbox(opts) {
     document: opts.document || { getElementById: () => null, documentElement: {}, body: {} },
     location: { pathname: opts.pathname || '/' },
     TelegramBridge: {
-      onUnreadCount: (n) => forwarded.push(n),
-      onBadgeDebug: (m) => debugLogs.push(String(m))
+      postMessage: (raw) => {
+        const message = JSON.parse(String(raw));
+        if (message.type === 'unread') forwarded.push(message.count);
+        if (message.type === 'debug') debugLogs.push(String(message.message));
+      }
     },
     setTimeout,
     clearTimeout,

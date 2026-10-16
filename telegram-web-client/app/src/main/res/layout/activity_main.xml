@@ -4,28 +4,78 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/clay_background"
-    android:padding="24dp">
+    android:background="@color/clay_background">
 
-    <WebView
-        android:id="@+id/webView"
+    <LinearLayout
+        android:id="@+id/accountBar"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="@color/clay_surface"
+        android:elevation="4dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="8dp"
+        android:paddingTop="6dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="6dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <Button
+            android:id="@+id/btnSelectAccount"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="Akun"
+            android:textAllCaps="false" />
+
+        <Button
+            android:id="@+id/btnAddAccount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tambah"
+            android:textAllCaps="false" />
+
+        <Button
+            android:id="@+id/btnDeleteAccount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Hapus"
+            android:textAllCaps="false" />
+    </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/webViewContainer"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:background="@color/clay_surface"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/accountBar"
         app:layout_constraintBottom_toBottomOf="parent"
-        android:visibility="gone" />
-
-    <ProgressBar
-        android:id="@+id/progressBar"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:progressTint="@color/clay_accent"
-        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent" />
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:indeterminateTint="@color/clay_accent"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/tvStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:padding="24dp"
+            android:textColor="@color/clay_text_primary"
+            android:textSize="16sp"
+            android:visibility="gone" />
+    </FrameLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

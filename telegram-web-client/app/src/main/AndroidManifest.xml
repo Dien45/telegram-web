@@ -48,7 +48,11 @@
         <service
             android:name=".BadgeKeepAliveService"
             android:exported="false"
-            android:foregroundServiceType="specialUse" />
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Maintains the active Telegram Web session for user-requested unread badge updates" />
+        </service>
 
         <provider
             android:name="androidx.core.content.FileProvider"
