@@ -39,4 +39,4 @@ node tools/badge_hook.test.js
 - Metadata aplikasi dan hash PIN disimpan di `EncryptedSharedPreferences` dengan master key Android Keystore.
 - Cookie dan storage Telegram dipisahkan per akun memakai AndroidX WebKit `MULTI_PROFILE` bila didukung versi Android System WebView perangkat.
 - Storage Chromium/WebView **tidak dienkripsi oleh aplikasi secara terpisah**; lihat [dokumentasi klien](telegram-web-client/README.md) untuk batasan dan fitur yang belum tersedia.
-- Signing release CI masih memakai keystore sementara; artifact CI belum cocok sebagai mekanisme upgrade stabil.
+- Keystore rilis (`telegram-web-client/keystore.jks`, PKCS12, password `android`) di-commit agar setiap build CI memakai identitas tanda tangan yang sama, sehingga APK baru bisa dipasang sebagai update di atas build sebelumnya. Karena repo ini publik, file itu bukan rahasia: siapa pun yang memilikinya bisa menandatangani APK yang diterima Android sebagai update. Ganti dengan keystore privat sebelum dipakai untuk distribusi luas.

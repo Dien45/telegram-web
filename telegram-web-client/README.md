@@ -43,7 +43,7 @@ Tes skrip badge (Node.js):
 node tools/badge_hook.test.js
 ```
 
-Build release CI saat ini menghasilkan artifact bertanda tangan keystore sementara. Jangan gunakan APK CI sebagai jalur upgrade stabil sebelum signing key tetap disimpan dengan aman dan konfigurasi workflow diperbaiki.
+Build release CI memakai keystore tetap yang di-commit (`telegram-web-client/keystore.jks`, PKCS12, password `android`), sehingga artifact CI dapat dipasang sebagai update di atas build CI sebelumnya. Konsekuensinya: di repo publik ini tanda tangan rilis bukan rahasia — ganti keystore privat bila ingin dipakai untuk distribusi luas.
 
 ## Struktur kode terkait
 

@@ -26,6 +26,9 @@ android {
             storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "android"
             keyAlias = "webclient"
             keyPassword = System.getenv("KEY_PASSWORD") ?: "android"
+            // Committed keystore is PKCS12: pinning one identity keeps every CI build
+            // installable as an update of the previous one.
+            storeType = "PKCS12"
         }
     }
 

@@ -13,10 +13,11 @@ local.properties
 *.jks
 *.keystore
 keystore.properties
+# Keystore rilis yang di-commit sengaja dipakai CI agar tiap build bisa saling update.
+!telegram-web-client/keystore.jks
 
 # Android SDK yang diunduh CI — jangan commit
 telegram-web-client/android-sdk/
-telegram-web-client/keystore.jks
 telegram-web-client/app-release-aligned.apk
 telegram-web-client/app/*.apk
 
