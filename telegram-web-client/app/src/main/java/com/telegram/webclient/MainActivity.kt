@@ -3,8 +3,6 @@ package com.telegram.webclient
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import android.view.View
@@ -37,7 +35,8 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "TelegramWebClient"
-        private const val IDLE_LOCK_MILLIS = 60_000L
+        /** Jeda di latar belakang sebelum aplikasi terkunci lagi. */
+        private const val BACKGROUND_LOCK_MILLIS = 30_000L
         private const val MAX_BRIDGE_MESSAGE_LENGTH = 2_048
         private const val MAX_UNREAD_COUNT = 1_000_000
 
@@ -52,24 +51,15 @@ class MainActivity : AppCompatActivity() {
     private lateinit var lockLauncher: ActivityResultLauncher<Intent>
     private lateinit var notificationPermissionLauncher: ActivityResultLauncher<String>
 
-    private val mainHandler = Handler(Looper.getMainLooper())
     private var currentWebView: WebView? = null
     private var currentAccount: TelegramAccount? = null
     private var badgeHookJs: String? = null
     private var authenticated = false
     private var lockScreenLaunched = false
     private var activityResumed = false
-    private var lastInteractionAt = 0L
 
-    private val idleLockRunnable = Runnable {
-        if (!authenticated) return@Runnable
-        val idleFor = SystemClock.elapsedRealtime() - lastInteractionAt
-        if (idleFor >= IDLE_LOCK_MILLIS) {
-            requireUnlock()
-        } else {
-            scheduleIdleLock()
-        }
-    }
+    /** Saat aplikasi terakhir meninggalkan layar; 0 kalau masih dipakai atau sudah terkunci. */
+    private var leftForegroundAt = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -86,7 +76,6 @@ class MainActivity : AppCompatActivity() {
             lockScreenLaunched = false
             if (result.resultCode == RESULT_OK) {
                 authenticated = true
-                lastInteractionAt = SystemClock.elapsedRealtime()
                 onAuthenticated()
             } else {
                 // Never reveal the underlying WebView after a canceled lock/setup screen.
@@ -109,17 +98,28 @@ class MainActivity : AppCompatActivity() {
         launchLockScreen()
     }
 
+    override fun onStart() {
+        super.onStart()
+        // Jam kunci hanya berjalan saat aplikasi tidak di layar, jadi dipakai pun tidak
+        // pernah menyela dengan PIN.
+        if (authenticated && leftForegroundAt != 0L) {
+            if (SystemClock.elapsedRealtime() - leftForegroundAt >= BACKGROUND_LOCK_MILLIS) {
+                requireUnlock()
+            }
+            leftForegroundAt = 0L
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (authenticated) leftForegroundAt = SystemClock.elapsedRealtime()
+    }
+
     override fun onResume() {
         super.onResume()
         activityResumed = true
         UnreadBadgeManager.refresh(this)
-        if (!authenticated) {
-            launchLockScreen()
-        } else if (SystemClock.elapsedRealtime() - lastInteractionAt >= IDLE_LOCK_MILLIS) {
-            requireUnlock()
-        } else {
-            scheduleIdleLock()
-        }
+        if (!authenticated) launchLockScreen()
     }
 
     override fun onPause() {
@@ -127,17 +127,8 @@ class MainActivity : AppCompatActivity() {
         super.onPause()
     }
 
-    override fun onUserInteraction() {
-        super.onUserInteraction()
-        if (authenticated) {
-            lastInteractionAt = SystemClock.elapsedRealtime()
-            scheduleIdleLock()
-        }
-    }
-
     override fun onDestroy() {
         super.onDestroy()
-        mainHandler.removeCallbacks(idleLockRunnable)
         isAlive = false
         BadgeKeepAliveService.stop(this)
         destroyCurrentWebView()
@@ -162,21 +153,14 @@ class MainActivity : AppCompatActivity() {
         UnreadBadgeManager.requestNotificationPermissionIfNeeded(this, notificationPermissionLauncher)
         BadgeKeepAliveService.start(this)
         renderActiveAccount()
-        scheduleIdleLock()
     }
 
     private fun requireUnlock() {
         if (!authenticated || isFinishing) return
         authenticated = false
-        mainHandler.removeCallbacks(idleLockRunnable)
         currentWebView?.visibility = View.INVISIBLE
         findViewById<LinearLayout>(R.id.accountBar).visibility = View.GONE
         if (activityResumed) launchLockScreen()
-    }
-
-    private fun scheduleIdleLock() {
-        mainHandler.removeCallbacks(idleLockRunnable)
-        if (authenticated) mainHandler.postDelayed(idleLockRunnable, IDLE_LOCK_MILLIS)
     }
 
     private fun renderActiveAccount() {
