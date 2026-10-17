@@ -102,6 +102,7 @@ class MainActivity : AppCompatActivity() {
             }
 
         findViewById<Button>(R.id.btnSelectAccount).setOnClickListener { showAccountPicker() }
+        findViewById<Button>(R.id.btnRenameAccount).setOnClickListener { promptRenameAccount() }
         findViewById<Button>(R.id.btnAddAccount).setOnClickListener { promptAddAccount() }
         findViewById<Button>(R.id.btnDeleteAccount).setOnClickListener { confirmDeleteActiveAccount() }
 
@@ -367,6 +368,34 @@ class MainActivity : AppCompatActivity() {
                             Toast.makeText(this, R.string.account_storage_error, Toast.LENGTH_LONG).show()
                         }
                     }
+            }
+            .show()
+    }
+
+    private fun promptRenameAccount() {
+        val account = currentAccount ?: return
+        val nameInput = layoutInflater.inflate(R.layout.dialog_add_account, null)
+        val input = nameInput.findViewById<TextInputEditText>(R.id.etAccountName)
+        input.setText(account.displayName)
+        input.setSelection(account.displayName.length)
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.rename_account)
+            .setView(nameInput)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.rename_account) { _, _ ->
+                val name = input.text?.toString().orEmpty().trim()
+                if (name.isEmpty()) {
+                    Toast.makeText(this, R.string.account_name_required, Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                runCatching { accountStore.renameAccount(account.id, name) }
+                    .onSuccess { renamed ->
+                        // Only the label changes here: renderActiveAccount() would destroy and
+                        // rebuild the WebView, reloading the page the user is looking at.
+                        currentAccount = renamed
+                        findViewById<Button>(R.id.btnSelectAccount).text = renamed.displayName
+                    }
+                    .onFailure { showStatus(getString(R.string.account_storage_error)) }
             }
             .show()
     }

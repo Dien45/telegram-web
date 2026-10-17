@@ -33,6 +33,7 @@
     <string name="account_storage_error">Data akun terenkripsi tidak dapat dibaca atau disimpan.</string>
     <string name="profile_isolation_required">Versi Android System WebView ini tidak mendukung profil akun terpisah. Perbarui WebView untuk menambah atau membuka akun ini.</string>
     <string name="profile_open_error">Profil akun tidak dapat dibuka dengan aman.</string>
+    <string name="rename_account">Ganti nama akun</string>
 
     <!-- Existing settings and update strings -->
     <string name="notification_channel_name">Telegram Web Client</string>

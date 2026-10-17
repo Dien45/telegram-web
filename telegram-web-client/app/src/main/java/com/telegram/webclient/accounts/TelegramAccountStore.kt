@@ -65,6 +65,21 @@ class TelegramAccountStore {
         return account
     }
 
+    /**
+     * Renaming changes only the label. The id and profileName stay untouched, so the account's
+     * WebView profile, cookies and login session are unaffected.
+     */
+    fun renameAccount(accountId: String, displayName: String): TelegramAccount {
+        val label = displayName.trim().take(MAX_LABEL_LENGTH)
+        require(label.isNotEmpty()) { "Account name cannot be empty" }
+
+        val accounts = getAccounts()
+        require(accounts.any { it.id == accountId }) { "Unknown account" }
+        val renamed = accounts.map { if (it.id == accountId) it.copy(displayName = label) else it }
+        save(renamed, activeId = prefs.getString(TelegramApp.KEY_ACTIVE_ACCOUNT, null))
+        return renamed.first { it.id == accountId }
+    }
+
     fun setActiveAccount(accountId: String) {
         require(getAccounts().any { it.id == accountId }) { "Unknown account" }
         check(prefs.edit().putString(TelegramApp.KEY_ACTIVE_ACCOUNT, accountId).commit()) {

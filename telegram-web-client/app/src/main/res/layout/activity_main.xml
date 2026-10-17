@@ -35,6 +35,15 @@
             app:icon="@drawable/ic_chevron_down" />
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnRenameAccount"
+            style="@style/Widget.ClayIconButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="8dp"
+            android:contentDescription="@string/rename_account"
+            app:icon="@drawable/ic_edit" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnAddAccount"
             style="@style/Widget.ClayIconButton"
             android:layout_width="48dp"
